@@ -13,13 +13,22 @@ const transformQuestion = (rawQuestion: Question): Question => ({
   ageGroup: rawQuestion.ageGroup,
   topic: rawQuestion.topic,
   subtopic: rawQuestion.subtopic || "",
-  questionType: rawQuestion.questionType || "conceptual"
+  questionType: rawQuestion.questionType || "conceptual",
 });
 
 export const api = {
-  async getQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
+  async getQuestion(
+    topic: string,
+    level: number,
+    userContext: UserContext | null
+  ): Promise<Question | null> {
     try {
-      const question = await gptService.getPlaygroundQuestion(topic, level, userContext);
+      if (userContext === null) return null;
+      const question = await gptService.getPlaygroundQuestion(
+        topic,
+        level,
+        userContext
+      );
       return transformQuestion(question);
     } catch (error) {
       console.error("Question generation error:", error);
@@ -27,11 +36,14 @@ export const api = {
     }
   },
 
-  async generateTest(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+  async generateTest(
+    topic: string,
+    examType: "JEE" | "NEET"
+  ): Promise<Question[]> {
     try {
-      console.log('API generateTest called with:', { topic, examType });
+      console.log("API generateTest called with:", { topic, examType });
       const questions = await gptService.getTestQuestions(topic, examType);
-      console.log('API received questions:', questions);
+      console.log("API received questions:", questions);
       return questions.map(transformQuestion);
     } catch (error) {
       console.error("Test generation error:", error);
@@ -39,7 +51,10 @@ export const api = {
     }
   },
 
-  async explore(query: string, userContext: UserContext): Promise<ExploreResponse> {
+  async explore(
+    query: string,
+    userContext: UserContext
+  ): Promise<ExploreResponse> {
     try {
       const response = await gptService.getExploreContent(query, userContext);
       return response;
@@ -47,5 +62,5 @@ export const api = {
       console.error("Explore error:", error);
       throw new Error("Failed to explore topic");
     }
-  }
+  },
 };

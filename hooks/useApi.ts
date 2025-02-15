@@ -9,7 +9,7 @@ export const useApi = () => {
   const getQuestion = async (
     topic: string,
     level: number,
-    userContext: UserContext
+    userContext: UserContext | null
   ): Promise<Question> => {
     try {
       setIsLoading(true);

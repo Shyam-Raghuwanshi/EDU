@@ -1,43 +1,52 @@
-import { Question, UserContext, ExploreResponse } from '../types';
-import OpenAI from 'openai';
-  
-  export class GPTService {
+import { Question, UserContext, ExploreResponse } from "../types";
+import OpenAI from "openai";
+
+export class GPTService {
   private openai: OpenAI;
-  
-    constructor() {
+
+  constructor() {
     this.openai = new OpenAI({
-      apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-      dangerouslyAllowBrowser: true
+      apiKey: process.env.VITE_OPENAI_API_KEY
+        ? process.env.VITE_OPENAI_API_KEY
+        : "",
+      dangerouslyAllowBrowser: true,
     });
   }
 
-  private async makeRequest(systemPrompt: string, userPrompt: string, maxTokens: number = 2000) {
+  private async makeRequest(
+    systemPrompt: string,
+    userPrompt: string,
+    maxTokens: number = 2000
+  ) {
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: "gpt-3.5-turbo",
         messages: [
-          { 
-            role: 'system', 
-            content: `${systemPrompt} Provide your response in JSON format.` 
+          {
+            role: "system",
+            content: `${systemPrompt} Provide your response in JSON format.`,
           },
-          { 
-            role: 'user', 
-            content: userPrompt 
-          }
-            ],
-            temperature: 0.7,
+          {
+            role: "user",
+            content: userPrompt,
+          },
+        ],
+        temperature: 0.7,
         max_tokens: maxTokens,
-            response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
       });
 
-      return response.choices[0].message?.content || '';
-      } catch (error) {
-      console.error('OpenAI API Error:', error);
-      throw new Error('Failed to generate content');
+      return response.choices[0].message?.content || "";
+    } catch (error) {
+      console.error("OpenAI API Error:", error);
+      throw new Error("Failed to generate content");
     }
   }
 
-  async getExploreContent(query: string, userContext: UserContext): Promise<ExploreResponse> {
+  async getExploreContent(
+    query: string,
+    userContext: UserContext
+  ): Promise<ExploreResponse> {
     try {
       const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely considering you are teaching someone with a low IQ.
         First, identify the domain of the topic from these categories:
@@ -148,34 +157,37 @@ import OpenAI from 'openai';
         3. Real-world application examples without using the word real world application
         Make it engaging for someone aged ${userContext.age}.`;
 
-        const content = await this.makeRequest(systemPrompt, userPrompt);
-      console.log('Raw GPT response:', content);
-      
+      const content = await this.makeRequest(systemPrompt, userPrompt);
+      console.log("Raw GPT response:", content);
+
       if (!content) {
-        throw new Error('Empty response from GPT');
+        throw new Error("Empty response from GPT");
       }
 
-        const parsedContent = JSON.parse(content);
-      console.log('Parsed content:', parsedContent);
+      const parsedContent = JSON.parse(content);
+      console.log("Parsed content:", parsedContent);
 
       // Validate the response structure
-      if (!parsedContent.domain || !parsedContent.content || 
-          !parsedContent.content.paragraph1 || 
-          !parsedContent.content.paragraph2 || 
-          !parsedContent.content.paragraph3) {
-        throw new Error('Invalid response structure');
+      if (
+        !parsedContent.domain ||
+        !parsedContent.content ||
+        !parsedContent.content.paragraph1 ||
+        !parsedContent.content.paragraph2 ||
+        !parsedContent.content.paragraph3
+      ) {
+        throw new Error("Invalid response structure");
       }
 
       // Combine paragraphs into content
       const formattedContent = [
         parsedContent.content.paragraph1,
         parsedContent.content.paragraph2,
-        parsedContent.content.paragraph3
-      ].join('\n\n');
+        parsedContent.content.paragraph3,
+      ].join("\n\n");
 
       // Ensure related topics and questions exist
-      const relatedTopics = Array.isArray(parsedContent.relatedTopics) 
-        ? parsedContent.relatedTopics.slice(0, 5) 
+      const relatedTopics = Array.isArray(parsedContent.relatedTopics)
+        ? parsedContent.relatedTopics.slice(0, 5)
         : [];
 
       const relatedQuestions = Array.isArray(parsedContent.relatedQuestions)
@@ -185,12 +197,11 @@ import OpenAI from 'openai';
       return {
         content: formattedContent,
         relatedTopics: relatedTopics,
-        relatedQuestions: relatedQuestions
+        relatedQuestions: relatedQuestions,
       };
-
     } catch (error) {
-      console.error('Explore content error:', error);
-      throw new Error('Failed to generate explore content');
+      console.error("Explore content error:", error);
+      throw new Error("Failed to generate explore content");
     }
   }
 
@@ -198,44 +209,60 @@ import OpenAI from 'openai';
     try {
       // Basic validation
       if (!question.text?.trim()) return false;
-      if (!Array.isArray(question.options) || question.options.length !== 4) return false;
-      if (question.options.some(opt => !opt?.trim())) return false;
-      if (typeof question.correctAnswer !== 'number' || 
-          question.correctAnswer < 0 || 
-          question.correctAnswer > 3) return false;
+      if (!Array.isArray(question.options) || question.options.length !== 4)
+        return false;
+      if (question.options.some((opt) => !opt?.trim())) return false;
+      if (
+        typeof question.correctAnswer !== "number" ||
+        question.correctAnswer < 0 ||
+        question.correctAnswer > 3
+      )
+        return false;
 
       // Explanation validation
-      if (!question.explanation?.correct?.trim() || 
-          !question.explanation?.key_point?.trim()) return false;
+      if (
+        !question.explanation?.correct?.trim() ||
+        !question.explanation?.key_point?.trim()
+      )
+        return false;
 
       // Additional validation
-      if (question.text.length < 10) return false;  // Too short
-      if (question.options.length !== new Set(question.options).size) return false; // Duplicates
-      if (question.explanation.correct.length < 5 || 
-          question.explanation.key_point.length < 5) return false; // Too short explanations
+      if (question.text.length < 10) return false; // Too short
+      if (question.options.length !== new Set(question.options).size)
+        return false; // Duplicates
+      if (
+        question.explanation.correct.length < 5 ||
+        question.explanation.key_point.length < 5
+      )
+        return false; // Too short explanations
 
       return true;
     } catch (error) {
-      console.error('Validation error:', error);
+      console.error("Validation error:", error);
       return false;
     }
   }
 
-  async getPlaygroundQuestion(topic: string, level: number, userContext: UserContext): Promise<Question> {
+  async getPlaygroundQuestion(
+    topic: string,
+    level: number,
+    userContext: UserContext
+  ): Promise<Question> {
     try {
       const aspects = [
-        'core_concepts',
-        'applications',
-        'problem_solving',
-        'analysis',
-        'current_trends'
+        "core_concepts",
+        "applications",
+        "problem_solving",
+        "analysis",
+        "current_trends",
       ];
 
       // Randomly select an aspect to focus on
-      const selectedAspect = aspects[Math.floor(Math.random() * aspects.length)];
-      
+      const selectedAspect =
+        aspects[Math.floor(Math.random() * aspects.length)];
+
       const systemPrompt = `Generate a UNIQUE multiple-choice question about ${topic}.
-        Focus on: ${selectedAspect.replace('_', ' ')}
+        Focus on: ${selectedAspect.replace("_", " ")}
 
         Return in this JSON format:
         {
@@ -298,23 +325,23 @@ import OpenAI from 'openai';
         - Maximum 25 words total`;
 
       const userPrompt = `Create a completely unique ${level}/10 difficulty question about ${topic}.
-        Focus on ${selectedAspect.replace('_', ' ')}.
+        Focus on ${selectedAspect.replace("_", " ")}.
         Ensure the correct answer is randomly placed.
         Make it engaging for a ${userContext.age} year old student.
         Use current examples and trends.`;
 
       const content = await this.makeRequest(systemPrompt, userPrompt, 1500);
-      
+
       if (!content) {
-        throw new Error('Empty response received');
+        throw new Error("Empty response received");
       }
 
       let parsedContent: Question;
       try {
         parsedContent = JSON.parse(content);
       } catch (error) {
-        console.error('JSON Parse Error:', error);
-        throw new Error('Invalid JSON response');
+        console.error("JSON Parse Error:", error);
+        throw new Error("Invalid JSON response");
       }
 
       // Randomly shuffle the options and adjust correctAnswer accordingly
@@ -322,28 +349,29 @@ import OpenAI from 'openai';
 
       // Validate and format the question
       const formattedQuestion: Question = {
-        text: shuffled.text || '',
+        text: shuffled.text || "",
         options: shuffled.options,
         correctAnswer: shuffled.correctAnswer,
         explanation: {
-          correct: shuffled.explanation?.correct || 'Correct answer explanation',
-          key_point: shuffled.explanation?.key_point || 'Key learning point'
+          correct:
+            shuffled.explanation?.correct || "Correct answer explanation",
+          key_point: shuffled.explanation?.key_point || "Key learning point",
         },
         difficulty: level,
         topic: topic,
         subtopic: parsedContent.subtopic || topic,
-        questionType: 'conceptual',
-        ageGroup: userContext.age.toString()
+        questionType: "conceptual",
+        ageGroup: userContext.age.toString(),
       };
 
       if (this.validateQuestionFormat(formattedQuestion)) {
         return formattedQuestion;
       }
 
-      throw new Error('Generated question failed validation');
+      throw new Error("Generated question failed validation");
     } catch (error) {
-      console.error('Question generation error:', error);
-      throw new Error('Failed to generate valid question');
+      console.error("Question generation error:", error);
+      throw new Error("Failed to generate valid question");
     }
   }
 
@@ -351,26 +379,32 @@ import OpenAI from 'openai';
     // Create array of option objects with original index
     const optionsWithIndex = question.options.map((opt, idx) => ({
       text: opt,
-      isCorrect: idx === question.correctAnswer
+      isCorrect: idx === question.correctAnswer,
     }));
 
     // Shuffle the options
     for (let i = optionsWithIndex.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [optionsWithIndex[i], optionsWithIndex[j]] = [optionsWithIndex[j], optionsWithIndex[i]];
+      [optionsWithIndex[i], optionsWithIndex[j]] = [
+        optionsWithIndex[j],
+        optionsWithIndex[i],
+      ];
     }
 
     // Find new index of correct answer
-    const newCorrectAnswer = optionsWithIndex.findIndex(opt => opt.isCorrect);
+    const newCorrectAnswer = optionsWithIndex.findIndex((opt) => opt.isCorrect);
 
     return {
       ...question,
-      options: optionsWithIndex.map(opt => opt.text),
-      correctAnswer: newCorrectAnswer
+      options: optionsWithIndex.map((opt) => opt.text),
+      correctAnswer: newCorrectAnswer,
     };
-    }
-  
-    async getTestQuestions(topic: string, examType: 'JEE' | 'NEET'): Promise<Question[]> {
+  }
+
+  async getTestQuestions(
+    topic: string,
+    examType: "JEE" | "NEET"
+  ): Promise<Question[]> {
     try {
       const systemPrompt = `Create a ${examType} exam test set about ${topic}.
         Generate exactly 15 questions following this structure:
@@ -389,63 +423,65 @@ import OpenAI from 'openai';
             }
           ]
         }`;
-        // ..
-        
+      // ..
 
-      console.log('Generating test questions...');
-      
+      console.log("Generating test questions...");
+
       const content = await this.makeRequest(
         systemPrompt,
         `Create 15 ${examType} questions about ${topic} (5 easy, 5 medium, 5 hard)`,
         3000
       );
 
-      console.log('Received response from API');
+      console.log("Received response from API");
 
       if (!content) {
-        console.error('Empty response from API');
-        throw new Error('No content received from API');
+        console.error("Empty response from API");
+        throw new Error("No content received from API");
       }
 
       let parsed;
       try {
         parsed = JSON.parse(content);
-        console.log('Successfully parsed JSON response');
+        console.log("Successfully parsed JSON response");
       } catch (error) {
-        console.error('JSON parse error:', error);
-        console.log('Raw content:', content);
-        throw new Error('Failed to parse API response');
+        console.error("JSON parse error:", error);
+        console.log("Raw content:", content);
+        throw new Error("Failed to parse API response");
       }
 
       if (!parsed?.questions || !Array.isArray(parsed.questions)) {
-        console.error('Invalid response structure:', parsed);
-        throw new Error('Invalid response structure');
+        console.error("Invalid response structure:", parsed);
+        throw new Error("Invalid response structure");
       }
 
       console.log(`Received ${parsed.questions.length} questions`);
 
-      const processedQuestions = parsed.questions.map((q: Partial<Question>, index: number) => {
-        const difficulty = Math.floor(index / 5) + 1;
-        return {
-          text: q.text || '',
-          options: Array.isArray(q.options) ? q.options : [],
-          correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
-          explanation: q.explanation || '',
-          difficulty,
-          topic,
-          subtopic: q.subtopic || `${topic} Concept ${index + 1}`,
-          examType,
-          questionType: 'conceptual',
-          ageGroup: '16-18'
-        } as Question;
-      });
+      const processedQuestions = parsed.questions.map(
+        (q: Partial<Question>, index: number) => {
+          const difficulty = Math.floor(index / 5) + 1;
+          return {
+            text: q.text || "",
+            options: Array.isArray(q.options) ? q.options : [],
+            correctAnswer:
+              typeof q.correctAnswer === "number" ? q.correctAnswer : 0,
+            explanation: q.explanation || "",
+            difficulty,
+            topic,
+            subtopic: q.subtopic || `${topic} Concept ${index + 1}`,
+            examType,
+            questionType: "conceptual",
+            ageGroup: "16-18",
+          } as Question;
+        }
+      );
 
-      console.log('Processed questions:', processedQuestions.length);
+      console.log("Processed questions:", processedQuestions.length);
 
       const validQuestions = processedQuestions.filter((q: Question) => {
         const isValid = this.validateQuestionFormat(q);
         if (!isValid) {
-          console.log('Invalid question:', q);
+          console.log("Invalid question:", q);
         }
         return isValid;
       });
@@ -458,35 +494,42 @@ import OpenAI from 'openai';
         return finalQuestions;
       }
 
-      throw new Error(`Only ${validQuestions.length} valid questions generated`);
+      throw new Error(
+        `Only ${validQuestions.length} valid questions generated`
+      );
     } catch (error) {
-      console.error('Test generation error:', error);
-      throw new Error(`Failed to generate test questions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Test generation error:", error);
+      throw new Error(
+        `Failed to generate test questions: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
   async exploreQuery(query: string): Promise<string> {
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: "gpt-3.5-turbo",
         messages: [
           {
-            role: 'system' as const,
-            content: 'You are a social media trend expert who explains topics by connecting them to current viral trends, memes, and pop culture moments.'
+            role: "system" as const,
+            content:
+              "You are a social media trend expert who explains topics by connecting them to current viral trends, memes, and pop culture moments.",
           },
           {
-            role: 'user' as const,
-            content: this.buildPrompt(query)
-          }
+            role: "user" as const,
+            content: this.buildPrompt(query),
+          },
         ],
         temperature: 0.9,
-        max_tokens: 4000
+        max_tokens: 4000,
       });
 
-      return response.choices[0].message?.content || '';
+      return response.choices[0].message?.content || "";
     } catch (error) {
-      console.error('Error in exploreQuery:', error);
-      return 'bestie, the wifi must be acting up... let me try again';
+      console.error("Error in exploreQuery:", error);
+      return "bestie, the wifi must be acting up... let me try again";
     }
   }
 
@@ -555,16 +598,20 @@ import OpenAI from 'openai';
   }
 
   async streamExploreContent(
-    query: string, 
-    userContext: UserContext,
-    onChunk: (content: { text?: string, topics?: any[], questions?: any[] }) => void
+    query: string,
+    userContext: UserContext | null,
+    onChunk: (content: {
+      text?: string;
+      topics?: any[];
+      questions?: any[];
+    }) => void
   ): Promise<void> {
     const maxRetries = 3;
     let retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext.age} year old.
+        const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext?.age} year old.
           First provide the explanation in plain text, then provide related content in a STRICT single-line JSON format.
           
           Structure your response exactly like this:
@@ -579,7 +626,7 @@ import OpenAI from 'openai';
           {"topics":[{"name":"Topic","type":"prerequisite","detail":"Why"}],"questions":[{"text":"Q?","type":"curiosity","detail":"Context"}]}
 
           RULES:
-          - ADAPT CONTENT FOR ${userContext.age} YEAR OLD:
+          - ADAPT CONTENT FOR ${userContext?.age} YEAR OLD:
             
             * Match complexity of explanation to age level
             
@@ -606,7 +653,7 @@ import OpenAI from 'openai';
           - Topic types: prerequisite, extension, application, parallel, deeper
           - Question types: curiosity, mechanism, causality, innovation, insight`;
 
-        const userPrompt = `Explain "${query}" in three very concise paragraphs for a ${userContext.age} year old in genz style:
+        const userPrompt = `Explain "${query}" in three very concise paragraphs for a ${userContext?.age} year old in genz style:
           1. Basic definition (15-20 words)
           2. Key details (15-20 words)
           3. Direct applications and facts (15-20 words)
@@ -618,25 +665,25 @@ import OpenAI from 'openai';
           Follow the format and length limits strictly.`;
 
         const stream = await this.openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+          model: "gpt-3.5-turbo",
           messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
           ],
           stream: true,
-          temperature: 0.7
+          temperature: 0.7,
         });
 
-        let mainContent = '';
-        let jsonContent = '';
+        let mainContent = "";
+        let jsonContent = "";
         let currentTopics: any[] = [];
         let currentQuestions: any[] = [];
         let isJsonSection = false;
-        
+
         for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || '';
-          
-          if (content.includes('---')) {
+          const content = chunk.choices[0]?.delta?.content || "";
+
+          if (content.includes("---")) {
             isJsonSection = true;
             continue;
           }
@@ -645,19 +692,19 @@ import OpenAI from 'openai';
             jsonContent += content;
             try {
               // Try to parse complete JSON objects
-              if (jsonContent.includes('}')) {
+              if (jsonContent.includes("}")) {
                 const jsonStr = jsonContent.trim();
-                if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
+                if (jsonStr.startsWith("{") && jsonStr.endsWith("}")) {
                   const parsed = JSON.parse(jsonStr);
-                  
+
                   // Process topics if available
                   if (parsed.topics && Array.isArray(parsed.topics)) {
                     parsed.topics.forEach((topic: any) => {
-                      if (!currentTopics.some(t => t.topic === topic.name)) {
+                      if (!currentTopics.some((t) => t.topic === topic.name)) {
                         currentTopics.push({
                           topic: topic.name,
                           type: topic.type,
-                          reason: topic.detail
+                          reason: topic.detail,
                         });
                       }
                     });
@@ -666,11 +713,15 @@ import OpenAI from 'openai';
                   // Process questions if available
                   if (parsed.questions && Array.isArray(parsed.questions)) {
                     parsed.questions.forEach((question: any) => {
-                      if (!currentQuestions.some(q => q.question === question.text)) {
+                      if (
+                        !currentQuestions.some(
+                          (q) => q.question === question.text
+                        )
+                      ) {
                         currentQuestions.push({
                           question: question.text,
                           type: question.type,
-                          context: question.detail
+                          context: question.detail,
                         });
                       }
                     });
@@ -679,41 +730,50 @@ import OpenAI from 'openai';
                   // Send update with current state
                   onChunk({
                     text: mainContent.trim(),
-                    topics: currentTopics.length > 0 ? currentTopics : undefined,
-                    questions: currentQuestions.length > 0 ? currentQuestions : undefined
+                    topics:
+                      currentTopics.length > 0 ? currentTopics : undefined,
+                    questions:
+                      currentQuestions.length > 0
+                        ? currentQuestions
+                        : undefined,
                   });
                 }
               }
             } catch (error) {
               // Continue accumulating if parsing fails
-              console.debug('JSON parse error:', error);
+              console.debug("JSON parse error:", error);
             }
           } else {
             mainContent += content;
-            onChunk({ 
+            onChunk({
               text: mainContent.trim(),
               topics: currentTopics.length > 0 ? currentTopics : undefined,
-              questions: currentQuestions.length > 0 ? currentQuestions : undefined
+              questions:
+                currentQuestions.length > 0 ? currentQuestions : undefined,
             });
           }
         }
 
         return;
-
       } catch (error) {
         retryCount++;
         console.error(`API attempt ${retryCount} failed:`, error);
 
         if (retryCount === maxRetries) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          throw new Error(`Failed to stream content after ${maxRetries} attempts. ${errorMessage}`);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          throw new Error(
+            `Failed to stream content after ${maxRetries} attempts. ${errorMessage}`
+          );
         }
 
         // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, retryCount) * 1000)
+        );
       }
     }
-    }
   }
-  
-  export const gptService = new GPTService();
+}
+
+export const gptService = new GPTService();

@@ -1,4 +1,3 @@
-
 export interface UserContext {
   age: number;
   location?: string;
@@ -13,14 +12,14 @@ export interface UserContext {
 }
 
 export interface ExploreResponse {
-  parts: string[];
-  relatedQueries: RelatedTopic[];
-  context?: string;
+  relatedQuestions: string[];
+  relatedTopics: RelatedTopic[];
+  content?: string;
 }
 
 export interface RelatedTopic {
   query: string;
-  type: 'prerequisite' | 'extension' | 'application' | 'parallel' | 'deeper';
+  type: "prerequisite" | "extension" | "application" | "parallel" | "deeper";
   context: string;
 }
 
@@ -34,6 +33,7 @@ export interface Question {
   topic: string;
   subtopic: string;
   index?: number;
+  questionType?: any;
 }
 
 export interface SearchBarProps {
@@ -47,7 +47,7 @@ export interface SearchBarProps {
     text: string;
     icon: string;
   }>;
-  buttonText?: string; 
+  buttonText?: string;
   initialValue?: string;
   onSubmit?: (query: string) => void;
 }
@@ -70,4 +70,4 @@ export interface MarkdownComponentProps {
   [key: string]: any;
 }
 
-// Add other shared types here 
+// Add other shared types here

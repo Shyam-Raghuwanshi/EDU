@@ -1,4 +1,4 @@
-// src/components/Explore/ExploreView.tsx
+"use "
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -45,7 +45,7 @@ interface ExploreViewProps {
   initialQuery?: string;
   onError: (message: string) => void;
   onRelatedQueryClick?: (query: string) => void;
-  userContext: UserContext;
+  userContext: UserContext | null;
 }
 
 const MarkdownComponents: Record<string, React.FC<MarkdownComponentProps>> = {
