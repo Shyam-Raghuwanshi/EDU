@@ -6,9 +6,7 @@ export class GPTService {
 
   constructor() {
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-        ? process.env.OPENAI_API_KEY
-        : "",
+      apiKey: process.env.OPENAI_API_KEY ? process.env.OPENAI_API_KEY : "",
       dangerouslyAllowBrowser: true,
     });
   }
@@ -26,14 +24,14 @@ export class GPTService {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch response from backend");
+        throw new Error(response.statusText);
       }
 
       const data = await response.json();
       return data || "";
-    } catch (error) {
-      console.error("API Request Error:", error);
-      throw new Error("Failed to generate content");
+    } catch (error:any) {
+      console.error("error", error);
+      throw new Error("Soemting went wrong!. Please try agin later");
     }
   }
 
@@ -603,7 +601,11 @@ export class GPTService {
         const response = await fetch("/api/streamExplore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: conversationHistory,query, userContext }),
+          body: JSON.stringify({
+            messages: conversationHistory,
+            query,
+            userContext,
+          }),
         });
 
         if (!response.ok || !response.body) {

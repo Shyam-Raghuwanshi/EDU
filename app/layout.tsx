@@ -1,7 +1,7 @@
 "use client";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import toast from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { createContext, useContext, useState } from "react";
 import { UserContext } from "@/types";
 import { PreFillForm } from "@/components/shared/PreFillForm";
@@ -58,6 +58,7 @@ export default function RootLayout({
         <AppContext.Provider
           value={{ userContext, setUserContext, onError, onSuccess }}
         >
+          <Toaster position="top-right" />
           <div className="min-h-screen bg-background text-white">
             {!userContext ? (
               <div className="min-h-screen bg-background text-white p-4">
@@ -65,9 +66,7 @@ export default function RootLayout({
               </div>
             ) : (
               <>
-                <Layout>
-                  {children}
-                </Layout>
+                <Layout>{children}</Layout>
               </>
             )}
           </div>

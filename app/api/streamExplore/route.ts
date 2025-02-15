@@ -1,7 +1,10 @@
+import { rateLimit } from "@/middleware/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const limitResponse = await rateLimit(req);
+    if (limitResponse) return limitResponse;
     const { messages, userContext, query } = await req.json();
 
     if (!messages || !Array.isArray(messages) || !userContext || !query) {
@@ -98,7 +101,6 @@ export async function POST(req: NextRequest) {
       status: response.status,
       headers: { "Content-Type": "text/event-stream" },
     });
-
   } catch (error) {
     console.error("Streaming API Error:", error);
     return NextResponse.json(

@@ -299,6 +299,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             );
           }
         );
+        
       } catch (error) {
         console.error("Search error:", error);
         onError(

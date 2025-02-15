@@ -132,9 +132,9 @@ export const PlaygroundView: React.FC = () => {
       const question = await getQuestion(query, 1, userContext);
       console.log("Question loaded:", question);
       setPreloadedQuestion(question);
-    } catch (error) {
-      console.error("Error fetching question:", error);
-      onError("Failed to generate question. Please try again.");
+    } catch (error:any) {
+      console.error("Error fetching question:-------", error);
+      onError(error);
     }
   };
 
