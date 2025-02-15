@@ -9,8 +9,8 @@ export const useApi = () => {
   const getQuestion = async (
     topic: string,
     level: number,
-    userContext: UserContext | null
-  ): Promise<Question> => {
+    userContext: UserContext
+  ): Promise<Question | null> => {
     try {
       setIsLoading(true);
       return await api.getQuestion(topic, level, userContext);

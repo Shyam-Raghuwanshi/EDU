@@ -19,26 +19,20 @@ export class GPTService {
     maxTokens: number = 2000
   ) {
     try {
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: `${systemPrompt} Provide your response in JSON format.`,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: maxTokens,
-        response_format: { type: "json_object" },
+      const response = await fetch("/api/gpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemPrompt, userPrompt, maxTokens }),
       });
 
-      return response.choices[0].message?.content || "";
+      if (!response.ok) {
+        throw new Error("Failed to fetch response from backend");
+      }
+
+      const data = await response.json();
+      return data || "";
     } catch (error) {
-      console.error("OpenAI API Error:", error);
+      console.error("API Request Error:", error);
       throw new Error("Failed to generate content");
     }
   }
@@ -509,24 +503,18 @@ export class GPTService {
 
   async exploreQuery(query: string): Promise<string> {
     try {
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system" as const,
-            content:
-              "You are a social media trend expert who explains topics by connecting them to current viral trends, memes, and pop culture moments.",
-          },
-          {
-            role: "user" as const,
-            content: this.buildPrompt(query),
-          },
-        ],
-        temperature: 0.9,
-        max_tokens: 4000,
+      const response = await fetch("/api/explore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
       });
 
-      return response.choices[0].message?.content || "";
+      if (!response.ok) {
+        throw new Error("Failed to fetch response from backend");
+      }
+
+      const data = await response.json();
+      return data.choices[0]?.message?.content || "";
     } catch (error) {
       console.error("Error in exploreQuery:", error);
       return "bestie, the wifi must be acting up... let me try again";
@@ -611,159 +599,124 @@ export class GPTService {
 
     while (retryCount < maxRetries) {
       try {
-        const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext?.age} year old.
-          First provide the explanation in plain text, then provide related content in a STRICT single-line JSON format.
-          
-          Structure your response exactly like this:
-          
-          <paragraph 1>
-
-          <paragraph 2>
-
-          <paragraph 3>
-
-          ---
-          {"topics":[{"name":"Topic","type":"prerequisite","detail":"Why"}],"questions":[{"text":"Q?","type":"curiosity","detail":"Context"}]}
-
-          RULES:
-          - ADAPT CONTENT FOR ${userContext?.age} YEAR OLD:
-            
-            * Match complexity of explanation to age level
-            
-          - STRICT LENGTH LIMITS:
-            * Total explanation must be 60-80 words maximum
-            * Each paragraph around 20-25 words each
-            * Related questions maximum 12 words each
-            * Topic details 1-2 words each
-          - Keep paragraphs clear and simple
-          - Third paragraph should directly state applications and facts without phrases like "In real-world applications"
-          - Use "---" as separator
-          - JSON must be in a single line
-          - No line breaks in JSON
-          - MUST provide EXACTLY 5 related topics and 5 questions
-          - Related questions must be:
-            * Curiosity-driven and thought-provoking
-            * STRICTLY 8-12 words maximum
-            * Focus on mind-blowing facts or surprising connections
-            * Make users think "Wow, I never thought about that!"
-          - Related topics must be:
-            * Directly relevant to understanding the main topic
-            * Mix of prerequisites and advanced concepts
-            * Brief, clear explanation of importance
-          - Topic types: prerequisite, extension, application, parallel, deeper
-          - Question types: curiosity, mechanism, causality, innovation, insight`;
-
-        const userPrompt = `Explain "${query}" in three very concise paragraphs for a ${userContext?.age} year old in genz style:
-          1. Basic definition (15-20 words)
-          2. Key details (15-20 words)
-          3. Direct applications and facts (15-20 words)
-
-          Then provide EXACTLY:
-          - 5 related topics that help understand ${query} better (age-appropriate)
-          - 5 mind-blowing questions (8-12 words each) that spark curiosity
-          
-          Follow the format and length limits strictly.`;
-
-        const stream = await this.openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          stream: true,
-          temperature: 0.7,
+        const response = await fetch("/api/streamExplore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, userContext }),
         });
+
+        if (!response.ok || !response.body) {
+          throw new Error("Failed to fetch streaming response from backend");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
         let mainContent = "";
         let jsonContent = "";
+        let isJsonSection = false;
         let currentTopics: any[] = [];
         let currentQuestions: any[] = [];
-        let isJsonSection = false;
 
-        for await (const chunk of stream) {
-          const content = chunk.choices[0]?.delta?.content || "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          if (content.includes("---")) {
-            isJsonSection = true;
-            continue;
-          }
+          const chunk = decoder.decode(value, { stream: true });
 
-          if (isJsonSection) {
-            jsonContent += content;
+          // Parse each line of the chunk (since the response is sent in SSE format)
+          const lines = chunk
+            .split("\n")
+            .filter((line) => line.startsWith("data: "));
+          for (const line of lines) {
             try {
-              // Try to parse complete JSON objects
-              if (jsonContent.includes("}")) {
-                const jsonStr = jsonContent.trim();
-                if (jsonStr.startsWith("{") && jsonStr.endsWith("}")) {
-                  const parsed = JSON.parse(jsonStr);
+              const jsonStr = line.replace("data: ", "").trim();
+              if (!jsonStr) continue; // Ignore empty lines
 
-                  // Process topics if available
-                  if (parsed.topics && Array.isArray(parsed.topics)) {
-                    parsed.topics.forEach((topic: any) => {
-                      if (!currentTopics.some((t) => t.topic === topic.name)) {
-                        currentTopics.push({
-                          topic: topic.name,
-                          type: topic.type,
-                          reason: topic.detail,
-                        });
-                      }
+              const parsed = JSON.parse(jsonStr);
+
+              // Extract actual content from the OpenAI streaming response
+              const content = parsed.choices?.[0]?.delta?.content || "";
+
+              if (content.includes("---")) {
+                isJsonSection = true;
+                continue;
+              }
+
+              if (isJsonSection) {
+                jsonContent += content;
+                if (jsonContent.includes("}")) {
+                  try {
+                    const parsedJson = JSON.parse(jsonContent.trim());
+
+                    if (parsedJson.topics) {
+                      parsedJson.topics.forEach((topic: any) => {
+                        if (
+                          !currentTopics.some((t) => t.topic === topic.name)
+                        ) {
+                          currentTopics.push({
+                            topic: topic.name,
+                            type: topic.type,
+                            reason: topic.detail,
+                          });
+                        }
+                      });
+                    }
+
+                    if (parsedJson.questions) {
+                      parsedJson.questions.forEach((question: any) => {
+                        if (
+                          !currentQuestions.some(
+                            (q) => q.question === question.text
+                          )
+                        ) {
+                          currentQuestions.push({
+                            question: question.text,
+                            type: question.type,
+                            context: question.detail,
+                          });
+                        }
+                      });
+                    }
+
+                    onChunk({
+                      text: mainContent.trim(),
+                      topics:
+                        currentTopics.length > 0 ? currentTopics : undefined,
+                      questions:
+                        currentQuestions.length > 0
+                          ? currentQuestions
+                          : undefined,
                     });
-                  }
 
-                  // Process questions if available
-                  if (parsed.questions && Array.isArray(parsed.questions)) {
-                    parsed.questions.forEach((question: any) => {
-                      if (
-                        !currentQuestions.some(
-                          (q) => q.question === question.text
-                        )
-                      ) {
-                        currentQuestions.push({
-                          question: question.text,
-                          type: question.type,
-                          context: question.detail,
-                        });
-                      }
-                    });
+                    jsonContent = ""; // Reset JSON buffer
+                  } catch (jsonError) {
+                    console.debug("JSON parse error:", jsonError);
                   }
-
-                  // Send update with current state
-                  onChunk({
-                    text: mainContent.trim(),
-                    topics:
-                      currentTopics.length > 0 ? currentTopics : undefined,
-                    questions:
-                      currentQuestions.length > 0
-                        ? currentQuestions
-                        : undefined,
-                  });
                 }
+              } else {
+                mainContent += content;
+                onChunk({
+                  text: mainContent.trim(),
+                  topics: currentTopics.length > 0 ? currentTopics : undefined,
+                  questions:
+                    currentQuestions.length > 0 ? currentQuestions : undefined,
+                });
               }
             } catch (error) {
-              // Continue accumulating if parsing fails
-              console.debug("JSON parse error:", error);
+              console.debug("Error parsing JSON from stream:", error);
             }
-          } else {
-            mainContent += content;
-            onChunk({
-              text: mainContent.trim(),
-              topics: currentTopics.length > 0 ? currentTopics : undefined,
-              questions:
-                currentQuestions.length > 0 ? currentQuestions : undefined,
-            });
           }
         }
 
-        return;
+        return; // Successfully completed, exit retry loop
       } catch (error) {
         retryCount++;
         console.error(`API attempt ${retryCount} failed:`, error);
 
         if (retryCount === maxRetries) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
           throw new Error(
-            `Failed to stream content after ${maxRetries} attempts. ${errorMessage}`
+            `Failed to stream content after ${maxRetries} attempts.`
           );
         }
 
