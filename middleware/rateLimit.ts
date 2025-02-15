@@ -1,6 +1,4 @@
-import { NextApiRequest } from "next";
 import { NextRequest, NextResponse } from "next/server";
-import requestIp from "request-ip";
 const rateLimitMap = new Map<
   string,
   { minute: number[]; hour: number[]; day: number[] }

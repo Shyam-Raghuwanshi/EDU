@@ -23,6 +23,7 @@ interface Stats {
   streak: number;
   bestStreak: number;
   avgTime: number;
+  difficulty?: number;
 }
 
 interface TopicProgress {
@@ -65,6 +66,7 @@ export const PlaygroundView: React.FC = () => {
     streak: 0,
     bestStreak: 0,
     avgTime: 0,
+    difficulty: 0,
   });
 
   const [_topicProgress, _setTopicProgress] = useState<TopicProgress>(() => {
@@ -128,12 +130,12 @@ export const PlaygroundView: React.FC = () => {
     }
 
     try {
+      const difficultyLevel = stats.difficulty || 1;
       console.log("Fetching next question...");
-      const question = await getQuestion(query, 1, userContext);
-      console.log("Question loaded:", question);
+      const question = await getQuestion(query, difficultyLevel, userContext);
       setPreloadedQuestion(question);
-    } catch (error:any) {
-      console.error("Error fetching question:-------", error);
+    } catch (error: any) {
+      console.error("Error fetching question", error);
       onError(error);
     }
   };
@@ -227,12 +229,25 @@ export const PlaygroundView: React.FC = () => {
     setSelectedAnswer(index);
     setShowExplanation(true);
     stopQuestionTimer();
-    updateStats(index === currentQuestion.correctAnswer);
+
+    const isCorrect = index === currentQuestion.correctAnswer;
+
+    setStats((prev) => {
+      const newStreak = isCorrect ? prev.streak + 1 : 0;
+      const newDifficulty = isCorrect
+        ? Math.min(prev?.difficulty! + 1, 10) // Increase difficulty up to 10
+        : Math.max(prev?.difficulty! - 1, 1); // Decrease difficulty down to 1
+
+      return {
+        ...prev,
+        streak: newStreak,
+        bestStreak: Math.max(prev.bestStreak, newStreak),
+        difficulty: newDifficulty, // Store updated difficulty
+      };
+    });
 
     if (!isPaused) {
-      // Start loading next question immediately
       fetchNewQuestion();
-      // Start countdown for transition
       startCountdown();
     }
   };
@@ -376,6 +391,16 @@ export const PlaygroundView: React.FC = () => {
                 <Award className="w-5 h-5 text-yellow-500" />
               </div>
               <span className="stats-label">Streak</span>
+
+              {/* Progress to next level */}
+              <progress
+                className="w-full h-2 bg-gray-700 rounded-lg mt-2"
+                value={stats.streak % 5}
+                max="5"
+              ></progress>
+              <p className="text-xs text-gray-400 mt-1">
+                {5 - (stats.streak % 5)} more correct to level up!
+              </p>
             </div>
 
             <div className="card">
