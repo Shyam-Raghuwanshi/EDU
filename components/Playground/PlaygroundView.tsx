@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from "react";
 import { SearchBar } from "../shared/SearchBar";
 import { Loading } from "../shared/Loading";
@@ -117,7 +117,7 @@ export const PlaygroundView: React.FC = () => {
   };
 
   const fetchNewQuestion = async () => {
-    if (!query) return;
+    if (!query || isPaused) return; // Block fetching if paused
 
     if (sessionStats.totalQuestions >= sessionStats.sessionLimit) {
       setSessionStats((prev) => ({ ...prev, isSessionComplete: true }));
@@ -128,9 +128,9 @@ export const PlaygroundView: React.FC = () => {
     }
 
     try {
-      console.log("Fetching next question..."); // Debug log
+      console.log("Fetching next question...");
       const question = await getQuestion(query, 1, userContext);
-      console.log("Question loaded:", question); // Debug log
+      console.log("Question loaded:", question);
       setPreloadedQuestion(question);
     } catch (error) {
       console.error("Error fetching question:", error);
@@ -178,7 +178,7 @@ export const PlaygroundView: React.FC = () => {
   };
 
   const togglePause = () => {
-    setIsPaused(!isPaused);
+    setIsPaused((prev: boolean) => !prev);
     if (nextQuestionTimer) {
       clearTimeout(nextQuestionTimer);
       setNextQuestionTimer(null);
@@ -263,28 +263,27 @@ export const PlaygroundView: React.FC = () => {
 
   // Use useEffect to handle question transitions
   useEffect(() => {
-    if (shouldShowNext && preloadedQuestion) {
+    if (!isPaused && shouldShowNext && preloadedQuestion) {
       console.log("Transitioning to next question:", preloadedQuestion);
       setCurrentQuestion(preloadedQuestion);
       setPreloadedQuestion(null);
       setShouldShowNext(false);
       setSelectedAnswer(null);
       setShowExplanation(false);
-      setCurrentQuestionTime(0); // Reset timer
-      startQuestionTimer(); // Start timer for new question
+      setCurrentQuestionTime(0);
+      startQuestionTimer();
       setSessionStats((prev) => ({
         ...prev,
         totalQuestions: prev.totalQuestions + 1,
       }));
     }
-  }, [shouldShowNext, preloadedQuestion]);
+  }, [isPaused, shouldShowNext, preloadedQuestion]);
 
   // Add cleanup for timer
   useEffect(() => {
     return () => {
-      if (timerInterval) {
-        clearInterval(timerInterval);
-      }
+      if (timerInterval) clearInterval(timerInterval);
+      if (nextQuestionTimer) clearTimeout(nextQuestionTimer);
     };
   }, []);
 
@@ -398,16 +397,19 @@ export const PlaygroundView: React.FC = () => {
               >
                 {currentQuestion?.text}
               </h2>
-              <button
-                onClick={togglePause}
-                className="p-2 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0"
-              >
-                {isPaused ? (
-                  <Play className="w-5 h-5 text-primary" />
-                ) : (
-                  <Pause className="w-5 h-5 text-primary" />
-                )}
-              </button>
+              {
+                <button
+                  onClick={togglePause}
+                  className="p-2 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0"
+                >
+                  {selectedAnswer !== null &&
+                    (isPaused ? (
+                      <Play className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Pause className="w-5 h-5 text-primary" />
+                    ))}
+                </button>
+              }
             </div>
 
             <div className="space-y-2">
