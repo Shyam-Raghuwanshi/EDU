@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await response.json();
-    console.log(data)
     return NextResponse.json(data);
   } catch (error) {
     console.error("API Error:", error);

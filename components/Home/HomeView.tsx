@@ -51,6 +51,7 @@ export const HomeView = ({ onModeSelect }: HomeViewProps) => {
                 <p className="text-gray-400 mb-4">{mode.description}</p>
                 <SearchBar
                   placeholder={mode.placeholder}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onSearch={(query) => onModeSelect(mode.action as any, query)}
                 />
               </div>

@@ -2,11 +2,11 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import toast, { Toaster } from "react-hot-toast";
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import { UserContext } from "@/types";
 import { PreFillForm } from "@/components/shared/PreFillForm";
-import { ExploreView } from "@/components/Explore/ExploreView";
 import { Layout } from "@/components/Layout/Layout";
+import { AppContext } from "@/hooks/useAppContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,23 +17,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-interface UserContextType {
-  userContext: UserContext | null;
-  setUserContext: React.Dispatch<React.SetStateAction<UserContext | null>>;
-  onError: (message: string) => void;
-  onSuccess: (message: string) => void;
-}
-
-const AppContext = createContext<UserContextType | undefined>(undefined);
-
-export const useAppContext = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useAppContext must be used within an AppProvider");
-  }
-  return context;
-};
 
 export default function RootLayout({
   children,

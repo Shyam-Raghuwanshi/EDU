@@ -27,7 +27,7 @@ export interface Question {
   text: string;
   options: string[];
   correctAnswer: number;
-  explanation: string;
+  explanation: {correct:any,key_point:any};
   difficulty: number;
   ageGroup: string;
   topic: string;
@@ -70,4 +70,10 @@ export interface MarkdownComponentProps {
   [key: string]: any;
 }
 
+export interface UserContextType {
+  userContext: UserContext | null;
+  setUserContext: React.Dispatch<React.SetStateAction<UserContext | null>>;
+  onError: (message: string) => void;
+  onSuccess: (message: string) => void;
+}
 // Add other shared types here

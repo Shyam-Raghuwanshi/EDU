@@ -149,6 +149,7 @@ export const TestView: React.FC<TestViewProps> = ({
   }, [mode, questions, testStarted]);
 
   const submitTest = () => {
+    // @typescript-eslint/no-unused-vars
     let totalMarks = 0;
     Object.values(answers).forEach((answer) => {
       if (answer === -1) return; // Skip unanswered

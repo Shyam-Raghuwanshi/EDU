@@ -13,7 +13,6 @@ function getClientIp(req: NextRequest): string {
     const forwardedFor = req.headers.get("x-forwarded-for");
   
     if (forwardedFor) {
-        console.log(forwardedFor)
       return forwardedFor.split(",")[0].trim(); // First IP in the list
     }
   

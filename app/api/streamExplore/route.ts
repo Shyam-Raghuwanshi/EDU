@@ -17,9 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("Chat history received:", messages);
-
-    // ✅ Add System Prompt as the first message
+    //  Add System Prompt as the first message
     const systemMessage = {
       role: "system",
       content: `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext.age} year old.
@@ -65,7 +63,7 @@ export async function POST(req: NextRequest) {
     - Question types: curiosity, mechanism, causality, innovation, insight`,
     };
 
-    // ✅ Add User Prompt as the latest user message
+    //  Add User Prompt as the latest user message
     const userMessage = {
       role: "user",
       content: `Explain "${query}" in three very concise paragraphs for a ${userContext.age} year old in genz style:
@@ -81,7 +79,6 @@ export async function POST(req: NextRequest) {
     };
 
     const updatedMessages = [systemMessage, ...messages, userMessage];
-    console.log(updatedMessages);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {

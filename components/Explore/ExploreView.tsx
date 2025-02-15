@@ -269,7 +269,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         ]);
         setShowInitialSearch(false);
 
-        // ✅ Create a history of messages to maintain context
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const conversationHistory: any = messages
           .filter((msg) => msg.content) // Ignore empty messages
           .map((msg) => ({
@@ -277,7 +277,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             content: msg.content,
           }));
 
-        // ✅ Include the new question
+        //  Include the new question
         conversationHistory.push({ role: "user", content: query });
 
         await gptService.streamExploreContent(

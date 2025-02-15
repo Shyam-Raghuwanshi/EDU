@@ -75,8 +75,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
       }
     };
-
+    // @typescript-eslint/no-explicit-any
     window.addEventListener("keydown", handleKeyDown as any);
+    // @typescript-eslint/no-explicit-any
     return () => window.removeEventListener("keydown", handleKeyDown as any);
   }, []);
 

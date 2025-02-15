@@ -14,8 +14,8 @@ import {
   XCircle,
   Lightbulb,
 } from "lucide-react";
-import { Question, UserContext } from "../../types";
-import { useAppContext } from "@/app/layout";
+import { Question } from "../../types";
+import { useAppContext } from "@/hooks/useAppContext";
 
 interface Stats {
   questions: number;
@@ -69,7 +69,7 @@ export const PlaygroundView: React.FC = () => {
     difficulty: 0,
   });
 
-  const [_topicProgress, _setTopicProgress] = useState<TopicProgress>(() => {
+  const [_topicProgress] = useState<TopicProgress>(() => {
     const saved = localStorage.getItem(`topic-progress-${query}`);
     return saved
       ? JSON.parse(saved)
@@ -134,6 +134,7 @@ export const PlaygroundView: React.FC = () => {
       console.log("Fetching next question...");
       const question = await getQuestion(query, difficultyLevel, userContext);
       setPreloadedQuestion(question);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error("Error fetching question", error);
       onError(error);
@@ -189,24 +190,6 @@ export const PlaygroundView: React.FC = () => {
 
   const COUNTDOWN_DURATION = 5;
 
-  const updateStats = (isCorrect: boolean): void => {
-    setStats((prev) => {
-      const newQuestions = prev.questions + 1;
-      const newAccuracy =
-        (prev.accuracy * prev.questions + (isCorrect ? 100 : 0)) / newQuestions;
-      const newStreak = isCorrect ? prev.streak + 1 : 0;
-
-      return {
-        questions: newQuestions,
-        accuracy: newAccuracy,
-        streak: newStreak,
-        bestStreak: Math.max(prev.bestStreak, newStreak),
-        avgTime:
-          (prev.avgTime * prev.questions + currentQuestionTime) / newQuestions,
-      };
-    });
-  };
-
   const startCountdown = () => {
     setNextQuestionCountdown(COUNTDOWN_DURATION);
     const interval = setInterval(() => {
@@ -253,6 +236,7 @@ export const PlaygroundView: React.FC = () => {
   };
 
   useEffect(() => {
+    // @typescript-eslint/no-non-null-asserted-optional-chain
     if (query) {
       fetchNewQuestion();
     }
@@ -274,7 +258,7 @@ export const PlaygroundView: React.FC = () => {
     if (nextQuestion) {
       prefetchNextQuestion();
     }
-  }, [nextQuestion]);
+  }, [nextQuestion, fetchNewQuestion]);
 
   // Use useEffect to handle question transitions
   useEffect(() => {
@@ -292,7 +276,7 @@ export const PlaygroundView: React.FC = () => {
         totalQuestions: prev.totalQuestions + 1,
       }));
     }
-  }, [isPaused, shouldShowNext, preloadedQuestion]);
+  }, [isPaused, shouldShowNext, preloadedQuestion, prefetchNextQuestion]);
 
   // Add cleanup for timer
   useEffect(() => {
