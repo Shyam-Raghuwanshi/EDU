@@ -260,6 +260,8 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
       try {
         if (window.navigator.vibrate) window.navigator.vibrate(50);
         setIsLoading(true);
+
+        // Update messages with user input
         setMessages((prev) => [
           ...prev,
           { type: "user", content: query },
@@ -267,7 +269,19 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         ]);
         setShowInitialSearch(false);
 
+        // ✅ Create a history of messages to maintain context
+        const conversationHistory: any = messages
+          .filter((msg) => msg.content) // Ignore empty messages
+          .map((msg) => ({
+            role: msg.type === "user" ? "user" : "assistant",
+            content: msg.content,
+          }));
+
+        // ✅ Include the new question
+        conversationHistory.push({ role: "user", content: query });
+
         await gptService.streamExploreContent(
+          conversationHistory,
           query,
           userContext,
           (chunk: StreamChunk) => {
@@ -294,7 +308,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         setIsLoading(false);
       }
     },
-    [gptService, onError, userContext]
+    [gptService, onError, userContext, messages]
   );
 
   const handleRelatedQueryClick = useCallback(

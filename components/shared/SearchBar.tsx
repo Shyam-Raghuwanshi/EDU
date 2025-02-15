@@ -57,6 +57,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     if (e.key === "Enter") {
       e.preventDefault();
       handleSearch(query);
+      setQuery(" ")
     }
   };
 
@@ -169,7 +170,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             </svg>
           </motion.div>
         </div>
-
         {/* Suggestions Dropdown */}
         <AnimatePresence>
           {showSuggestions && (isFocused || query) && (

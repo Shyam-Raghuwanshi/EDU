@@ -2,16 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { query, userContext } = await req.json();
+    const { messages, userContext, query } = await req.json();
 
-    if (!query || !userContext) {
+    if (!messages || !Array.isArray(messages) || !userContext || !query) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        {
+          error:
+            "Missing or invalid 'messages', 'userContext', or 'query' field",
+        },
         { status: 400 }
       );
     }
 
-    const systemPrompt = `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext.age} year old.
+    console.log("Chat history received:", messages);
+
+    // ✅ Add System Prompt as the first message
+    const systemMessage = {
+      role: "system",
+      content: `You are a Gen-Z tutor who explains complex topics concisely for a ${userContext.age} year old.
     First provide the explanation in plain text, then provide related content in a STRICT single-line JSON format.
     
     Structure your response exactly like this:
@@ -51,9 +59,13 @@ export async function POST(req: NextRequest) {
       * Mix of prerequisites and advanced concepts
       * Brief, clear explanation of importance
     - Topic types: prerequisite, extension, application, parallel, deeper
-    - Question types: curiosity, mechanism, causality, innovation, insight`;
+    - Question types: curiosity, mechanism, causality, innovation, insight`,
+    };
 
-    const userPrompt = `Explain "${query}" in three very concise paragraphs for a ${userContext.age} year old in genz style:
+    // ✅ Add User Prompt as the latest user message
+    const userMessage = {
+      role: "user",
+      content: `Explain "${query}" in three very concise paragraphs for a ${userContext.age} year old in genz style:
     1. Basic definition (15-20 words)
     2. Key details (15-20 words)
     3. Direct applications and facts (15-20 words)
@@ -62,8 +74,11 @@ export async function POST(req: NextRequest) {
     - 5 related topics that help understand ${query} better (age-appropriate)
     - 5 mind-blowing questions (8-12 words each) that spark curiosity
     
-    Follow the format and length limits strictly.`;
+    Follow the format and length limits strictly.`,
+    };
 
+    const updatedMessages = [systemMessage, ...messages, userMessage];
+    console.log(updatedMessages);
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -72,10 +87,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: "gpt-4",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        messages: updatedMessages,
         temperature: 0.7,
         max_tokens: 1000,
         stream: true,
@@ -86,6 +98,7 @@ export async function POST(req: NextRequest) {
       status: response.status,
       headers: { "Content-Type": "text/event-stream" },
     });
+
   } catch (error) {
     console.error("Streaming API Error:", error);
     return NextResponse.json(

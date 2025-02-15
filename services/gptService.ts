@@ -586,6 +586,7 @@ export class GPTService {
   }
 
   async streamExploreContent(
+    conversationHistory: { role: "user" | "assistant"; content: string }[],
     query: string,
     userContext: UserContext | null,
     onChunk: (content: {
@@ -602,7 +603,7 @@ export class GPTService {
         const response = await fetch("/api/streamExplore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, userContext }),
+          body: JSON.stringify({ messages: conversationHistory,query, userContext }),
         });
 
         if (!response.ok || !response.body) {
